@@ -197,7 +197,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.opensearch.client.Requests.syncedFlushRequest;
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_SHARDS;
 import static org.opensearch.common.unit.TimeValue.timeValueMillis;
@@ -748,7 +747,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         }
         // always default delayed allocation to 0 to make sure we have tests are not delayed
         builder.put(UnassignedInfo.INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING.getKey(), 0);
-        builder.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean());
         if (randomBoolean()) {
             builder.put(IndexSettings.INDEX_SOFT_DELETES_RETENTION_OPERATIONS_SETTING.getKey(), between(0, 1000));
         }
@@ -1675,20 +1673,11 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                     .setIndicesOptions(IndicesOptions.lenientExpandOpen())
                     .execute(new LatchedActionListener<>(newLatch(inFlightAsyncOperations)));
             } else if (maybeFlush && rarely()) {
-                if (randomBoolean()) {
-                    client().admin()
-                        .indices()
-                        .prepareFlush(indices)
-                        .setIndicesOptions(IndicesOptions.lenientExpandOpen())
-                        .execute(new LatchedActionListener<>(newLatch(inFlightAsyncOperations)));
-                } else {
-                    client().admin()
-                        .indices()
-                        .syncedFlush(
-                            syncedFlushRequest(indices).indicesOptions(IndicesOptions.lenientExpandOpen()),
-                            new LatchedActionListener<>(newLatch(inFlightAsyncOperations))
-                        );
-                }
+                client().admin()
+                    .indices()
+                    .prepareFlush(indices)
+                    .setIndicesOptions(IndicesOptions.lenientExpandOpen())
+                    .execute(new LatchedActionListener<>(newLatch(inFlightAsyncOperations)));
             } else if (rarely()) {
                 client().admin()
                     .indices()

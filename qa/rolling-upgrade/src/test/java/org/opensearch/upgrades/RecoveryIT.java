@@ -123,9 +123,8 @@ public class RecoveryIT extends AbstractRollingTestCase {
     private int indexDocs(String index, final int idStart, final int numDocs) throws IOException {
         for (int i = 0; i < numDocs; i++) {
             final int id = idStart + i;
-            Request indexDoc = new Request("PUT", index + "/test/" + id);
+            Request indexDoc = new Request("PUT", index + "/_doc/" + id);
             indexDoc.setJsonEntity("{\"test\": \"test_" + randomAsciiOfLength(2) + "\"}");
-            indexDoc.setOptions(expectWarnings(RestIndexAction.TYPES_DEPRECATION_MESSAGE));
             client().performRequest(indexDoc);
         }
         return numDocs;
@@ -322,13 +321,13 @@ public class RecoveryIT extends AbstractRollingTestCase {
                 throw new IllegalStateException("unknown type " + CLUSTER_TYPE);
         }
         if (randomBoolean()) {
-            performSyncedFlush(index, randomBoolean());
+            syncedFlush(index, randomBoolean());
             ensureGlobalCheckpointSynced(index);
         }
     }
 
     public void testRecovery() throws Exception {
-        final String index = "recover_with_soft_deletes";
+        final String index = "test_recovery";
         if (CLUSTER_TYPE == ClusterType.OLD) {
             Settings.Builder settings = Settings.builder()
                 .put(IndexMetadata.INDEX_NUMBER_OF_SHARDS_SETTING.getKey(), 1)
@@ -339,7 +338,7 @@ public class RecoveryIT extends AbstractRollingTestCase {
                 // before timing out
                 .put(INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING.getKey(), "100ms")
                 .put(SETTING_ALLOCATION_MAX_RETRY.getKey(), "0"); // fail faster
-            if (randomBoolean()) {
+            if (minimumNodeVersion().before(Version.V_2_0_0) && randomBoolean()) {
                 settings.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean());
             }
             createIndex(index, settings.build());
@@ -360,6 +359,9 @@ public class RecoveryIT extends AbstractRollingTestCase {
                 }
             }
         }
+        if (randomBoolean()) {
+            syncedFlush(index, randomBoolean());
+        }
         ensureGreen(index);
     }
 
@@ -370,8 +372,10 @@ public class RecoveryIT extends AbstractRollingTestCase {
                 .put(IndexMetadata.INDEX_NUMBER_OF_SHARDS_SETTING.getKey(), between(1, 5))
                 .put(IndexMetadata.INDEX_NUMBER_OF_REPLICAS_SETTING.getKey(), between(1, 2)) // triggers nontrivial promotion
                 .put(INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING.getKey(), "100ms")
-                .put(SETTING_ALLOCATION_MAX_RETRY.getKey(), "0") // fail faster
-                .put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean());
+                .put(SETTING_ALLOCATION_MAX_RETRY.getKey(), "0"); // fail faster
+            if (minimumNodeVersion().before(Version.V_2_0_0) && randomBoolean()) {
+                settings.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean());
+            }
             createIndex(index, settings.build());
             int numDocs = randomInt(10);
             indexDocs(index, 0, numDocs);
@@ -391,8 +395,10 @@ public class RecoveryIT extends AbstractRollingTestCase {
                     .put(IndexMetadata.INDEX_NUMBER_OF_SHARDS_SETTING.getKey(), between(1, 5))
                     .put(IndexMetadata.INDEX_NUMBER_OF_REPLICAS_SETTING.getKey(), between(0, 1))
                     .put(INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING.getKey(), "100ms")
-                    .put(SETTING_ALLOCATION_MAX_RETRY.getKey(), "0") // fail faster
-                    .put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean());
+                    .put(SETTING_ALLOCATION_MAX_RETRY.getKey(), "0"); // fail faster
+                if (minimumNodeVersion().before(Version.V_2_0_0) && randomBoolean()) {
+                    settings.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean());
+                }
                 createIndex(index, settings.build());
                 int numDocs = randomInt(10);
                 indexDocs(index, 0, numDocs);
@@ -652,7 +658,7 @@ public class RecoveryIT extends AbstractRollingTestCase {
             final int times = randomIntBetween(0, 2);
             for (int i = 0; i < times; i++) {
                 long value = randomNonNegativeLong();
-                Request update = new Request("POST", index + "/test/" + docId + "/_update");
+                Request update = new Request("POST", index + "/_update/" + docId);
                 update.setOptions(expectWarnings(RestUpdateAction.TYPES_DEPRECATION_MESSAGE));
                 update.setJsonEntity("{\"doc\": {\"updated_field\": " + value + "}}");
                 client().performRequest(update);
@@ -661,13 +667,13 @@ public class RecoveryIT extends AbstractRollingTestCase {
         }
         client().performRequest(new Request("POST", index + "/_refresh"));
         for (int docId : updates.keySet()) {
-            Request get = new Request("GET", index + "/test/" + docId);
+            Request get = new Request("GET", index + "/_doc/" + docId);
             get.setOptions(expectWarnings(RestGetAction.TYPES_DEPRECATION_MESSAGE));
             Map<String, Object> doc = entityAsMap(client().performRequest(get));
             assertThat(XContentMapValues.extractValue("_source.updated_field", doc), equalTo(updates.get(docId)));
         }
         if (randomBoolean()) {
-            performSyncedFlush(index, randomBoolean());
+            syncedFlush(index, randomBoolean());
             ensureGlobalCheckpointSynced(index);
         }
     }
@@ -713,10 +719,13 @@ public class RecoveryIT extends AbstractRollingTestCase {
     public void testOperationBasedRecovery() throws Exception {
         final String index = "test_operation_based_recovery";
         if (CLUSTER_TYPE == ClusterType.OLD) {
-            createIndex(index, Settings.builder()
+            final Settings.Builder settings = Settings.builder()
                 .put(IndexMetadata.INDEX_NUMBER_OF_SHARDS_SETTING.getKey(), 1)
-                .put(IndexMetadata.INDEX_NUMBER_OF_REPLICAS_SETTING.getKey(), 2)
-                .put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean()).build());
+                .put(IndexMetadata.INDEX_NUMBER_OF_REPLICAS_SETTING.getKey(), 2);
+            if (minimumNodeVersion().before(Version.V_2_0_0) && randomBoolean()) {
+                settings.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), randomBoolean());
+            }
+            createIndex(index, settings.build());
             ensureGreen(index);
             indexDocs(index, 0, randomIntBetween(100, 200));
             flush(index, randomBoolean());
@@ -791,7 +800,7 @@ public class RecoveryIT extends AbstractRollingTestCase {
         if (CLUSTER_TYPE == ClusterType.OLD) {
             boolean softDeletesEnabled = true;
             Settings.Builder settings = Settings.builder().put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1);
-            if (randomBoolean()) {
+            if (minimumNodeVersion().before(Version.V_2_0_0) && randomBoolean()) {
                 softDeletesEnabled = randomBoolean();
                 settings.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), softDeletesEnabled);
             }
