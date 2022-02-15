@@ -60,7 +60,12 @@ public class IndicesStatsTests extends OpenSearchSingleNodeTestCase {
         createIndex("test");
         IndicesStatsResponse rsp = client().admin().indices().prepareStats("test").get();
         SegmentsStats stats = rsp.getTotal().getSegments();
-        assertEquals(0, stats.getCount());
+        assertEquals(0, stats.getTermsMemoryInBytes());
+        assertEquals(0, stats.getStoredFieldsMemoryInBytes());
+        assertEquals(0, stats.getTermVectorsMemoryInBytes());
+        assertEquals(0, stats.getNormsMemoryInBytes());
+        assertEquals(0, stats.getPointsMemoryInBytes());
+        assertEquals(0, stats.getDocValuesMemoryInBytes());
     }
 
     public void testSegmentStats() throws Exception {
@@ -97,8 +102,16 @@ public class IndicesStatsTests extends OpenSearchSingleNodeTestCase {
 
         IndicesStatsResponse rsp = client().admin().indices().prepareStats("test").get();
         SegmentsStats stats = rsp.getIndex("test").getTotal().getSegments();
-        // should be more than one segment since data was indexed
-        assertThat(stats.getCount(), greaterThan(0L));
+        assertThat(stats.getTermsMemoryInBytes(), greaterThan(0L));
+        assertThat(stats.getStoredFieldsMemoryInBytes(), greaterThan(0L));
+        assertThat(stats.getTermVectorsMemoryInBytes(), greaterThan(0L));
+        assertThat(stats.getNormsMemoryInBytes(), greaterThan(0L));
+        assertThat(stats.getDocValuesMemoryInBytes(), greaterThan(0L));
+        if ((storeType == IndexModule.Type.MMAPFS) || (storeType == IndexModule.Type.HYBRIDFS)) {
+            assertEquals(0, stats.getPointsMemoryInBytes()); // bkd tree is stored off-heap
+        } else {
+            assertThat(stats.getPointsMemoryInBytes(), greaterThan(0L)); // bkd tree is stored on heap
+        }
 
         // now check multiple segments stats are merged together
         client().prepareIndex("test", "doc", "2").setSource("foo", "bar", "bar", "baz", "baz", 43).get();
@@ -106,8 +119,16 @@ public class IndicesStatsTests extends OpenSearchSingleNodeTestCase {
 
         rsp = client().admin().indices().prepareStats("test").get();
         SegmentsStats stats2 = rsp.getIndex("test").getTotal().getSegments();
-        // stats2 should exceed stats since multiple segments stats were merged
-        assertThat(stats2.getCount(), greaterThan(stats.getCount()));
+        assertThat(stats2.getTermsMemoryInBytes(), greaterThan(stats.getTermsMemoryInBytes()));
+        assertThat(stats2.getStoredFieldsMemoryInBytes(), greaterThan(stats.getStoredFieldsMemoryInBytes()));
+        assertThat(stats2.getTermVectorsMemoryInBytes(), greaterThan(stats.getTermVectorsMemoryInBytes()));
+        assertThat(stats2.getNormsMemoryInBytes(), greaterThan(stats.getNormsMemoryInBytes()));
+        assertThat(stats2.getDocValuesMemoryInBytes(), greaterThan(stats.getDocValuesMemoryInBytes()));
+        if ((storeType == IndexModule.Type.MMAPFS) || (storeType == IndexModule.Type.HYBRIDFS)) {
+            assertEquals(0, stats2.getPointsMemoryInBytes()); // bkd tree is stored off-heap
+        } else {
+            assertThat(stats2.getPointsMemoryInBytes(), greaterThan(stats.getPointsMemoryInBytes()));  // bkd tree is stored on heap
+        }
     }
 
     public void testCommitStats() throws Exception {

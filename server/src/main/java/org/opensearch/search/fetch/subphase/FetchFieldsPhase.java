@@ -35,6 +35,7 @@ package org.opensearch.search.fetch.subphase;
 import org.apache.lucene.index.LeafReaderContext;
 import org.opensearch.common.document.DocumentField;
 import org.opensearch.index.mapper.IgnoredFieldMapper;
+import org.opensearch.index.mapper.MapperService;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.fetch.FetchContext;
 import org.opensearch.search.fetch.FetchSubPhase;
@@ -60,6 +61,7 @@ public final class FetchFieldsPhase implements FetchSubPhase {
             return null;
         }
 
+        MapperService mapperService = fetchContext.mapperService();
         SearchLookup searchLookup = fetchContext.searchLookup();
         if (fetchContext.mapperService().documentMapper().sourceMapper().enabled() == false) {
             throw new IllegalArgumentException(
@@ -70,7 +72,7 @@ public final class FetchFieldsPhase implements FetchSubPhase {
             );
         }
 
-        FieldFetcher fieldFetcher = FieldFetcher.create(fetchContext.getQueryShardContext(), searchLookup, fetchFieldsContext.fields());
+        FieldFetcher fieldFetcher = FieldFetcher.create(mapperService, searchLookup, fetchFieldsContext.fields());
         return new FetchSubPhaseProcessor() {
             @Override
             public void setNextReader(LeafReaderContext readerContext) {

@@ -36,7 +36,6 @@ import org.apache.lucene.search.Query;
 import org.opensearch.index.IndexSettings;
 import org.opensearch.index.mapper.MapperService;
 import org.opensearch.index.query.ParsedQuery;
-import org.opensearch.index.query.QueryShardContext;
 import org.opensearch.search.SearchExtBuilder;
 import org.opensearch.search.fetch.subphase.FetchDocValuesContext;
 import org.opensearch.search.fetch.subphase.FetchFieldsContext;
@@ -219,10 +218,6 @@ public class FetchContext {
      */
     public SearchExtBuilder getSearchExt(String name) {
         return searchContext.getSearchExt(name);
-    }
-
-    public QueryShardContext getQueryShardContext() {
-        return searchContext.getQueryShardContext();
     }
 
     /**

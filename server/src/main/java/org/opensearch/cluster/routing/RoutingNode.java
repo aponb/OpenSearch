@@ -49,7 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -85,7 +84,7 @@ public class RoutingNode implements Iterable<ShardRouting> {
             return this.shardTuple.v2().get(shardId);
         }
 
-        public ShardRouting put(ShardRouting shardRouting) {
+        public ShardRouting add(ShardRouting shardRouting) {
             return put(shardRouting.shardId(), shardRouting);
         }
 
@@ -115,10 +114,22 @@ public class RoutingNode implements Iterable<ShardRouting> {
 
         @Override
         public Iterator<ShardRouting> iterator() {
-            return Stream.concat(
-                Collections.unmodifiableCollection(this.shardTuple.v1().values()).stream(),
-                Collections.unmodifiableCollection(this.shardTuple.v2().values()).stream()
-            ).iterator();
+            final Iterator<ShardRouting> primaryIterator = Collections.unmodifiableCollection(this.shardTuple.v1().values()).iterator();
+            final Iterator<ShardRouting> replicaIterator = Collections.unmodifiableCollection(this.shardTuple.v2().values()).iterator();
+            return new Iterator<ShardRouting>() {
+                @Override
+                public boolean hasNext() {
+                    return primaryIterator.hasNext() || replicaIterator.hasNext();
+                }
+
+                @Override
+                public ShardRouting next() {
+                    if (primaryIterator.hasNext()) {
+                        return primaryIterator.next();
+                    }
+                    return replicaIterator.next();
+                }
+            };
         }
     }
 
@@ -206,7 +217,7 @@ public class RoutingNode implements Iterable<ShardRouting> {
      */
     void add(ShardRouting shard) {
         assert invariant();
-        if (shards.put(shard) != null) {
+        if (shards.add(shard) != null) {
             throw new IllegalStateException(
                 "Trying to add a shard "
                     + shard.shardId()

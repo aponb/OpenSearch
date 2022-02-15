@@ -64,10 +64,10 @@ public abstract class FieldTypeTestCase extends OpenSearchTestCase {
 
     public static List<?> fetchSourceValue(MappedFieldType fieldType, Object sourceValue, String format) throws IOException {
         String field = fieldType.name();
-        QueryShardContext context = mock(QueryShardContext.class);
-        when(context.sourcePath(field)).thenReturn(org.opensearch.common.collect.Set.of(field));
+        MapperService mapperService = mock(MapperService.class);
+        when(mapperService.sourcePath(field)).thenReturn(org.opensearch.common.collect.Set.of(field));
 
-        ValueFetcher fetcher = fieldType.valueFetcher(context, null, format);
+        ValueFetcher fetcher = fieldType.valueFetcher(mapperService, null, format);
         SourceLookup lookup = new SourceLookup();
         lookup.setSource(Collections.singletonMap(field, sourceValue));
         return fetcher.fetchValues(lookup);

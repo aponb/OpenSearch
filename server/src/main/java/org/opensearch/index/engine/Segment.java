@@ -40,7 +40,6 @@ import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.search.SortedNumericSelector;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
-import org.opensearch.Version;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.io.stream.StreamInput;
 import org.opensearch.common.io.stream.StreamOutput;
@@ -67,11 +66,10 @@ public class Segment implements Writeable {
     public org.apache.lucene.util.Version version = null;
     public Boolean compound = null;
     public String mergeId;
+    public long memoryInBytes;
     public Sort segmentSort;
     public Accountable ramTree = null;
     public Map<String, String> attributes;
-
-    private static final ByteSizeValue ZERO_BYTE_SIZE_VALUE = new ByteSizeValue(0L);
 
     public Segment(StreamInput in) throws IOException {
         name = in.readString();
@@ -84,11 +82,7 @@ public class Segment implements Writeable {
         version = Lucene.parseVersionLenient(in.readOptionalString(), null);
         compound = in.readOptionalBoolean();
         mergeId = in.readOptionalString();
-        // the following was removed in Lucene 9 (https://issues.apache.org/jira/browse/LUCENE-9387)
-        // retain for bwc only (todo: remove in OpenSearch 3)
-        if (in.getVersion().before(Version.V_2_0_0)) {
-            in.readLong();  // estimated memory
-        }
+        memoryInBytes = in.readLong();
         if (in.readBoolean()) {
             // verbose mode
             ramTree = readRamTree(in);
@@ -151,13 +145,10 @@ public class Segment implements Writeable {
     }
 
     /**
-     * Estimation of the memory usage was removed in Lucene 9 (https://issues.apache.org/jira/browse/LUCENE-9387)
-     * retain for bwc only (todo: remove in OpenSearch 3).
-     * @deprecated
+     * Estimation of the memory usage used by a segment.
      */
-    @Deprecated
-    public ByteSizeValue getZeroMemory() {
-        return ZERO_BYTE_SIZE_VALUE;
+    public long getMemoryInBytes() {
+        return this.memoryInBytes;
     }
 
     /**
@@ -202,11 +193,7 @@ public class Segment implements Writeable {
         out.writeOptionalString(version.toString());
         out.writeOptionalBoolean(compound);
         out.writeOptionalString(mergeId);
-        // the following was removed in Lucene 9 (https://issues.apache.org/jira/browse/LUCENE-9387)
-        // retain for bwc only (todo: remove in OpenSearch 3)
-        if (out.getVersion().before(Version.V_2_0_0)) {
-            out.writeLong(0L);
-        }
+        out.writeLong(memoryInBytes);
 
         boolean verbose = ramTree != null;
         out.writeBoolean(verbose);
@@ -363,6 +350,8 @@ public class Segment implements Writeable {
             + ", mergeId='"
             + mergeId
             + '\''
+            + ", memoryInBytes="
+            + memoryInBytes
             + (segmentSort != null ? ", sort=" + segmentSort : "")
             + ", attributes="
             + attributes

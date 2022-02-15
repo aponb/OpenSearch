@@ -67,14 +67,26 @@ public class RestIndexActionTests extends RestActionTestCase {
         controller().registerHandler(new AutoIdHandler(() -> clusterStateSupplier.get().nodes()));
     }
 
-    public void testPath() {
+    public void testTypeInPath() {
+        RestRequest deprecatedRequest = new FakeRestRequest.Builder(xContentRegistry()).withMethod(RestRequest.Method.PUT)
+            .withPath("/some_index/some_type/some_id")
+            .build();
+        dispatchRequest(deprecatedRequest);
+        assertWarnings(RestIndexAction.TYPES_DEPRECATION_MESSAGE);
+
         RestRequest validRequest = new FakeRestRequest.Builder(xContentRegistry()).withMethod(RestRequest.Method.PUT)
             .withPath("/some_index/_doc/some_id")
             .build();
         dispatchRequest(validRequest);
     }
 
-    public void testCreatePath() {
+    public void testCreateWithTypeInPath() {
+        RestRequest deprecatedRequest = new FakeRestRequest.Builder(xContentRegistry()).withMethod(RestRequest.Method.PUT)
+            .withPath("/some_index/some_type/some_id/_create")
+            .build();
+        dispatchRequest(deprecatedRequest);
+        assertWarnings(RestIndexAction.TYPES_DEPRECATION_MESSAGE);
+
         RestRequest validRequest = new FakeRestRequest.Builder(xContentRegistry()).withMethod(RestRequest.Method.PUT)
             .withPath("/some_index/_create/some_id")
             .build();

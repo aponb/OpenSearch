@@ -33,7 +33,6 @@
 package org.opensearch.index.mapper;
 
 import org.opensearch.common.Nullable;
-import org.opensearch.index.query.QueryShardContext;
 import org.opensearch.search.lookup.SourceLookup;
 
 import java.util.ArrayDeque;
@@ -53,17 +52,17 @@ public abstract class SourceValueFetcher implements ValueFetcher {
     private final Set<String> sourcePaths;
     private final @Nullable Object nullValue;
 
-    public SourceValueFetcher(String fieldName, QueryShardContext context) {
-        this(fieldName, context, null);
+    public SourceValueFetcher(String fieldName, MapperService mapperService) {
+        this(fieldName, mapperService, null);
     }
 
     /**
      * @param fieldName The name of the field.
-     * @param context A query shard context.
+     * @param mapperService A mapper service.
      * @param nullValue A optional substitute value if the _source value is 'null'.
      */
-    public SourceValueFetcher(String fieldName, QueryShardContext context, Object nullValue) {
-        this.sourcePaths = context.sourcePath(fieldName);
+    public SourceValueFetcher(String fieldName, MapperService mapperService, Object nullValue) {
+        this.sourcePaths = mapperService.sourcePath(fieldName);
         this.nullValue = nullValue;
     }
 
@@ -105,11 +104,11 @@ public abstract class SourceValueFetcher implements ValueFetcher {
     /**
      * Creates a {@link SourceValueFetcher} that passes through source values unmodified.
      */
-    public static SourceValueFetcher identity(String fieldName, QueryShardContext context, String format) {
+    public static SourceValueFetcher identity(String fieldName, MapperService mapperService, String format) {
         if (format != null) {
             throw new IllegalArgumentException("Field [" + fieldName + "] doesn't support formats.");
         }
-        return new SourceValueFetcher(fieldName, context) {
+        return new SourceValueFetcher(fieldName, mapperService) {
             @Override
             protected Object parseSourceValue(Object value) {
                 return value;
@@ -120,11 +119,11 @@ public abstract class SourceValueFetcher implements ValueFetcher {
     /**
      * Creates a {@link SourceValueFetcher} that converts source values to strings.
      */
-    public static SourceValueFetcher toString(String fieldName, QueryShardContext context, String format) {
+    public static SourceValueFetcher toString(String fieldName, MapperService mapperService, String format) {
         if (format != null) {
             throw new IllegalArgumentException("Field [" + fieldName + "] doesn't support formats.");
         }
-        return new SourceValueFetcher(fieldName, context) {
+        return new SourceValueFetcher(fieldName, mapperService) {
             @Override
             protected Object parseSourceValue(Object value) {
                 return value.toString();

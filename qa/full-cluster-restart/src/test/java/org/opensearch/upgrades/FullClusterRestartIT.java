@@ -50,6 +50,7 @@ import org.opensearch.common.xcontent.json.JsonXContent;
 import org.opensearch.common.xcontent.support.XContentMapValues;
 import org.opensearch.index.IndexSettings;
 import org.opensearch.rest.action.document.RestBulkAction;
+import org.opensearch.rest.action.document.RestIndexAction;
 import org.opensearch.rest.action.document.RestUpdateAction;
 import org.opensearch.rest.action.search.RestExplainAction;
 import org.opensearch.test.NotEqualMessageBuilder;
@@ -988,6 +989,9 @@ public class FullClusterRestartIT extends AbstractFullClusterRestartTestCase {
             for (int i = 0; i < numDocs; i++) {
                 String doc = Strings.toString(JsonXContent.contentBuilder().startObject().field("field", "v1").endObject());
                 Request request = new Request("POST", "/" + index + "/" + type + "/" + i);
+                if (isRunningAgainstAncientCluster() == false) {
+                    request.setOptions(expectWarnings(RestIndexAction.TYPES_DEPRECATION_MESSAGE));
+                }
                 request.setJsonEntity(doc);
                 client().performRequest(request);
                 refresh();
@@ -1254,6 +1258,9 @@ public class FullClusterRestartIT extends AbstractFullClusterRestartTestCase {
         Request request = new Request("PUT", "/info/" + this.type + "/" + index + "_" + type);
         request.addParameter("op_type", "create");
         request.setJsonEntity(Strings.toString(infoDoc));
+        if (isRunningAgainstAncientCluster() == false) {
+            request.setOptions(expectWarnings(RestIndexAction.TYPES_DEPRECATION_MESSAGE));
+        }
         client().performRequest(request);
     }
 
@@ -1509,7 +1516,11 @@ public class FullClusterRestartIT extends AbstractFullClusterRestartTestCase {
 
             Request bulk = new Request("POST", "/_bulk");
             bulk.addParameter("refresh", "true");
-            bulk.setJsonEntity("{\"index\": {\"_index\": \"test_index_old\"}}\n" + "{\"f1\": \"v1\", \"f2\": \"v2\"}\n");
+            bulk.setJsonEntity("{\"index\": {\"_index\": \"test_index_old\", \"_type\" : \"" + type + "\"}}\n" +
+                "{\"f1\": \"v1\", \"f2\": \"v2\"}\n");
+        if (isRunningAgainstAncientCluster() == false) {
+            bulk.setOptions(expectWarnings(RestBulkAction.TYPES_DEPRECATION_MESSAGE));
+        }
             client().performRequest(bulk);
 
             // start a async reindex job

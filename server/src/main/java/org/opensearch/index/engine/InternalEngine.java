@@ -701,7 +701,10 @@ public class InternalEngine extends Engine {
                     DirectoryReader.open(indexWriter),
                     shardId
                 );
-                internalReaderManager = new OpenSearchReaderManager(directoryReader);
+                internalReaderManager = new OpenSearchReaderManager(
+                    directoryReader,
+                    new RamAccountingRefreshListener(engineConfig.getCircuitBreakerService())
+                );
                 lastCommittedSegmentInfos = store.readLastCommittedSegmentsInfo();
                 ExternalReaderManager externalReaderManager = new ExternalReaderManager(internalReaderManager, externalRefreshListener);
                 success = true;

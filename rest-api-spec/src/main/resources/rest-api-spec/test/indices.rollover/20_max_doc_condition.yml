@@ -17,6 +17,7 @@
   - do:
       index:
         index: logs-1
+        type:  test
         id:    "1"
         body:  { "foo": "hello world" }
         refresh: true
@@ -37,6 +38,7 @@
   - do:
       index:
         index: logs-1
+        type:  test
         id:    "2"
         body:  { "foo": "hello world" }
         refresh: true

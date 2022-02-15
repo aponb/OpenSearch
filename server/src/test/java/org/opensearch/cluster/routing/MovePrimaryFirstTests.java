@@ -16,11 +16,8 @@ import org.opensearch.common.unit.TimeValue;
 import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.stream.Stream;
 
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
@@ -87,25 +84,19 @@ public class MovePrimaryFirstTests extends OpenSearchIntegTestCase {
         final ClusterStateListener listener = event -> {
             if (event.routingTableChanged()) {
                 final RoutingNodes routingNodes = event.state().getRoutingNodes();
-                int startedCount = 0;
-                List<ShardRouting> initz2n1 = new ArrayList<>(), initz2n2 = new ArrayList<>();
+                int startedz2n1 = 0;
+                int startedz2n2 = 0;
                 for (Iterator<RoutingNode> it = routingNodes.iterator(); it.hasNext();) {
                     RoutingNode routingNode = it.next();
                     final String nodeName = routingNode.node().getName();
                     if (nodeName.equals(z2n1)) {
-                        startedCount += routingNode.numberOfShardsWithState(ShardRoutingState.STARTED);
-                        initz2n1 = routingNode.shardsWithState(ShardRoutingState.INITIALIZING);
+                        startedz2n1 = routingNode.numberOfShardsWithState(ShardRoutingState.STARTED);
                     } else if (nodeName.equals(z2n2)) {
-                        startedCount += routingNode.numberOfShardsWithState(ShardRoutingState.STARTED);
-                        initz2n2 = routingNode.shardsWithState(ShardRoutingState.INITIALIZING);
+                        startedz2n2 = routingNode.numberOfShardsWithState(ShardRoutingState.STARTED);
                     }
                 }
-                if (!Stream.concat(initz2n1.stream(), initz2n2.stream()).anyMatch(s -> s.primary())) {
-                    // All primaries are relocated before 60% of total shards are started on new nodes
-                    final int totalShardCount = primaryShardCount * 2;
-                    if (primaryShardCount <= startedCount && startedCount <= 3 * totalShardCount / 5) {
-                        primaryMoveLatch.countDown();
-                    }
+                if (startedz2n1 >= primaryShardCount / 2 && startedz2n2 >= primaryShardCount / 2) {
+                    primaryMoveLatch.countDown();
                 }
             }
         };

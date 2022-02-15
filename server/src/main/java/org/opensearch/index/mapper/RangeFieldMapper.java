@@ -36,7 +36,6 @@ import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 import org.opensearch.OpenSearchException;
-import org.opensearch.Version;
 import org.opensearch.common.Explicit;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.geo.ShapeRelation;
@@ -117,17 +116,15 @@ public class RangeFieldMapper extends ParametrizedFieldMapper {
         private final Parameter<Map<String, String>> meta = Parameter.metaParam();
 
         private final RangeType type;
-        private final Version indexCreatedVersion;
 
         public Builder(String name, RangeType type, Settings settings) {
-            this(name, type, COERCE_SETTING.get(settings), hasIndexCreated(settings) ? Version.indexCreated(settings) : null);
+            this(name, type, COERCE_SETTING.get(settings));
         }
 
-        public Builder(String name, RangeType type, boolean coerceByDefault, Version indexCreatedVersion) {
+        public Builder(String name, RangeType type, boolean coerceByDefault) {
             super(name);
             this.type = type;
             this.coerce = Parameter.explicitBoolParam("coerce", true, m -> toType(m).coerce, coerceByDefault);
-            this.indexCreatedVersion = indexCreatedVersion;
             if (this.type != RangeType.DATE) {
                 format.neverSerialize();
                 locale.neverSerialize();
@@ -160,11 +157,8 @@ public class RangeFieldMapper extends ParametrizedFieldMapper {
                             + " type"
                     );
                 }
-
-                // The builder context may not have index created version, falling back to indexCreatedVersion
-                // property of this mapper builder.
                 DateFormatter dateTimeFormatter;
-                if (Joda.isJodaPattern(context.indexCreatedVersionOrDefault(indexCreatedVersion), format.getValue())) {
+                if (Joda.isJodaPattern(context.indexCreatedVersion(), format.getValue())) {
                     dateTimeFormatter = Joda.forPattern(format.getValue()).withLocale(locale.getValue());
                 } else {
                     dateTimeFormatter = DateFormatter.forPattern(format.getValue()).withLocale(locale.getValue());
@@ -269,13 +263,13 @@ public class RangeFieldMapper extends ParametrizedFieldMapper {
         }
 
         @Override
-        public ValueFetcher valueFetcher(QueryShardContext context, SearchLookup searchLookup, String format) {
+        public ValueFetcher valueFetcher(MapperService mapperService, SearchLookup searchLookup, String format) {
             DateFormatter defaultFormatter = dateTimeFormatter();
             DateFormatter formatter = format != null
                 ? DateFormatter.forPattern(format).withLocale(defaultFormatter.locale())
                 : defaultFormatter;
 
-            return new SourceValueFetcher(name(), context) {
+            return new SourceValueFetcher(name(), mapperService) {
 
                 @Override
                 @SuppressWarnings("unchecked")
@@ -377,7 +371,6 @@ public class RangeFieldMapper extends ParametrizedFieldMapper {
     private final Locale locale;
 
     private final boolean coerceByDefault;
-    private final Version indexCreatedVersion;
 
     private RangeFieldMapper(
         String simpleName,
@@ -396,7 +389,6 @@ public class RangeFieldMapper extends ParametrizedFieldMapper {
         this.format = builder.format.getValue();
         this.locale = builder.locale.getValue();
         this.coerceByDefault = builder.coerce.getDefaultValue().value();
-        this.indexCreatedVersion = builder.indexCreatedVersion;
     }
 
     boolean coerce() {
@@ -405,7 +397,7 @@ public class RangeFieldMapper extends ParametrizedFieldMapper {
 
     @Override
     public ParametrizedFieldMapper.Builder getMergeBuilder() {
-        return new Builder(simpleName(), type, coerceByDefault, indexCreatedVersion).init(this);
+        return new Builder(simpleName(), type, coerceByDefault).init(this);
     }
 
     @Override

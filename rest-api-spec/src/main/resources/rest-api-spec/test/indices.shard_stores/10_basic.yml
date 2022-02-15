@@ -24,6 +24,7 @@
   - do:
       index:
         index: index1
+        type: type
         body: { foo: bar }
         refresh: true
 
@@ -58,11 +59,13 @@
   - do:
       index:
         index: index1
+        type: type
         body: { foo: bar }
         refresh: true
   - do:
       index:
         index: index2
+        type: type
         body: { foo: bar }
         refresh: true
   - do:

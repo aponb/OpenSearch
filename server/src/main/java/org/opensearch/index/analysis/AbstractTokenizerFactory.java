@@ -41,6 +41,7 @@ public abstract class AbstractTokenizerFactory extends AbstractIndexComponent im
 
     public AbstractTokenizerFactory(IndexSettings indexSettings, Settings settings, String name) {
         super(indexSettings);
+        Analysis.parseAndDeprecateAnalysisVersion(name, settings);
         this.name = name;
     }
 

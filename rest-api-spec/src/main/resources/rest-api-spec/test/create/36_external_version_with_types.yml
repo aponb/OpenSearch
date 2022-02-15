@@ -5,6 +5,7 @@
       catch:              bad_request
       create:
           index:          test
+          type:           test
           id:             1
           body:           { foo: bar }
           version_type:   external
@@ -18,6 +19,7 @@
       catch:              bad_request
       create:
           index:          test
+          type:           test
           id:             2
           body:           { foo: bar }
           version_type:   external

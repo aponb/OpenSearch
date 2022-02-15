@@ -14,13 +14,13 @@
               {
                 "set" : {
                   "field" : "index_type_id",
-                  "value": "{{_index}}/{{_id}}"
+                  "value": "{{_index}}/{{_type}}/{{_id}}"
                 }
               },
               {
                 "append" : {
                   "field" : "metadata",
-                  "value": ["{{_index}}", "{{_id}}"]
+                  "value": ["{{_index}}", "{{_type}}", "{{_id}}"]
                 }
               }
             ]
@@ -30,6 +30,7 @@
   - do:
       index:
         index: test
+        type: test
         id: 1
         pipeline: "my_pipeline_1"
         body: {}
@@ -37,10 +38,11 @@
   - do:
       get:
         index: test
+        type: test
         id: 1
   - length: { _source: 2 }
-  - match: { _source.index_type_id: "test/1" }
-  - match: { _source.metadata: ["test", "1"] }
+  - match: { _source.index_type_id: "test/test/1" }
+  - match: { _source.metadata: ["test", "test", "1"] }
 
 ---
 "Test templating":
@@ -108,6 +110,7 @@
   - do:
       index:
         index: test
+        type: test
         id: 1
         pipeline: "my_pipeline_1"
         body: {
@@ -120,6 +123,7 @@
   - do:
       get:
         index: test
+        type: test
         id: 1
   - length: { _source: 5 }
   - match: { _source.field1: "1" }
@@ -131,6 +135,7 @@
   - do:
       index:
         index: test
+        type: test
         id: 1
         pipeline: "my_pipeline_2"
         body: {
@@ -140,6 +145,7 @@
   - do:
       get:
         index: test
+        type: test
         id: 1
   - length: { _source: 2 }
   - match: { _source.field1: "field2" }
@@ -148,6 +154,7 @@
   - do:
       index:
         index: test
+        type: test
         id: 1
         pipeline: "my_pipeline_3"
         body: {
@@ -158,6 +165,7 @@
   - do:
       get:
         index: test
+        type: test
         id: 1
   - length: { _source: 1 }
   - match: { _source.field_to_remove: "field2" }
@@ -196,6 +204,7 @@
   - do:
       index:
         index: test
+        type: test
         id: 1
         pipeline: "my_handled_pipeline"
         body: {
@@ -205,6 +214,7 @@
   - do:
       get:
         index: test
+        type: test
         id: 1
   - length: { _source: 2 }
   - match: { _source.do_nothing: "foo" }
@@ -236,6 +246,7 @@
   - do:
       index:
         index: test
+        type: test
         id: 1
         pipeline: "_id"
         body: {
@@ -257,6 +268,7 @@
   - do:
       get:
         index: test
+        type: test
         id: 1
   - length: { _source: 2 }
   - match: { _source.values_flat: ["foo_bar", "foo_baz"] }

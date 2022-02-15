@@ -175,6 +175,7 @@ public final class IngestClient {
 
     /**
      * Simulate a pipeline on a set of documents provided in the request
+     * <p>
      *
      * @param request the request
      * @param options the request options (e.g. headers), use {@link RequestOptions#DEFAULT} if nothing needs to be customized
@@ -193,6 +194,7 @@ public final class IngestClient {
 
     /**
      * Asynchronously simulate a pipeline on a set of documents provided in the request
+     * <p>
      *
      * @param request the request
      * @param options the request options (e.g. headers), use {@link RequestOptions#DEFAULT} if nothing needs to be customized
